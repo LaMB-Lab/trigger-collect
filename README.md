@@ -4,50 +4,88 @@ A Python script for aggregating times from several trigger channels such that th
 
 ## Author Information
 _Author:_ Matthew A. Tucker
+
 _Affiliations:_ NYUAD Department of Psychology; Language, Mind, and Brain Laboratory; Neurolinguistics of Language Laboratory (Abu Dhabi)
+
 _Email:_ matt.tucker@nyu.edu
 
 ## Usage
 
-`% python trigger-collect.py outfile includes excludes file1 file2 file3 file4 file5 file6 file7 file8`
+`% python trigger-collect.py input`
 
 ### Required Arguments
 
-* `outfile` - the name of the output file to create (or overwrite)
-* `includes` - the name of a file containing the list of files1-8 to include (i.e., the files whose channels are set for the trigger in question)
-* `excludes` - the name of a file containing the list of files1-8 to exclude (i.e., the files whose channels are cleared for the trigger in question)
-* `file1` - the name of a file containing the trigger times for the least significant (i.e., lowest-numbered) trigger channel
-* `file2` - `file7` - the name of a file containing the trigger times for the next trigger channels, from lowest- to highest-numbered.
-* `file8` - the name of a file containing the trigger times for the most significant (i.e., highest-numbered) trigger channel
+* `input` - a trigger-collect input file (see below)
 
 ### Usage Comments
 
-`trigger-collect.py` takes a sequential list of files, `file1` through `file8` which contain a list of times for triggers sent on these channels. It expects that `file1` represents the least significant bit and `file8` the most significant bit. It also assumes that the times on these files are syncrhonous; `trigger-collect.py` will not operate sensibly if there is any asynchrony.
+#### General Usage
 
-The goal of `trigger-collect.py` is to create a file, `outfile`, which contains only the times which overlap in the subset of `file1`-`file8` specified in `includes` and which do not appear in `excludes`. Therefore, `includes` should be a list of the files which have their associated channels set and `excludes` should be a list of the files which have their associated channels cleared. `outfile` will then be created and can be re-imported into MEG160 to fool MEG160 into thinking the multiple channels are in fact a single, 8-bit channel.
+`trigger-collect.py` takes a single input file which is specially formatted (see below) which contains a list of files corresponding to events on trigger channels in a binary trigger signal system and a list of decimal trigger codes. `trigger-collect.py` then creates an `output/` directory that contains files for each decimal trigger containing only those times for which the proper channels have events given the binary representation of that trigger. It also creates `triggers-ordered.txt`, a file containing a sequential list of every decimal trigger event sent to the system.
 
-### Example Usage
+*Note* that `trigger-collect.py` rounds to the nearest tenth of a millisecond (0.0001 seconds) because it assumes that anything more precise is subject to slight asynchronies in the latencies of the DAQ system which records the triggers. This is done because of experience at the NYUAD Neurolinguistics of Language Lab which showed that smaller round-offs created left slight asynchronies in the trigger times. Contact the maintainers if this rounding is too imprecise for your needs.
 
-In Abu Dhabi, the trigger channels are 224-231, meaning that `file1` through `file8` are usually `224.txt` through `231.txt`. An example of use is then:
+#### Trigger-Collect Input Formatting
+
+`trigger-collect.py` expects an input file, specified as `input`, which has exactly two lines, formatted as follows:
 
 ```
-% python trigger-collect.py 12-epochs.txt 12-incls.txt 12-excls.txt 224.txt 225.txt 226.txt 227.txt 228.txt 229.txt 230.txt 231.txt`
-
-Including the following files:
-226-2.txt
-227-2.txt
-Excluding the following files:
-224-2.txt
-225-2.txt
-228-2.txt
-229-2.txt
-230-2.txt
-231-2.txt
-This should be trigger number 12.
-If you don't agree, then something is wrong, and no guarantees are made on the output's integrity.
-Done.
+Files: f1 f2 f3 f4 ... f8
+Triggers: t1 t2 ... t3 ... tn
 ```
+
+That is, `trigger-collect.py` expects `input` to have no more than two lines which contain the following infformation:
+
+1. The string `Files: ` followed by a list of up to 8 files separated by spaces. The files should contain a list of trigger event times for the trigger channels, and should be arranged in the order _least significant_-_most significant_. See below for an example from the NYUAD NeLLab trigger box.
+2. The string `Triggers: ` followed by a list of any number of decimal triggers separated by spaces.
+
+Deviations from this input file format will lead to errors or bad behavior. Note especially that the trigger channel files must be ordered properly on this list, or the results will be nonsense (but not look like nonsense unless you do the math by hand).
+
+#### Example Usage
+
+In Abu Dhabi, the trigger channels are 224-231, meaning that `f1` through `f8` are usually `224.txt` through `231.txt` in `input`. An example of use is then:
+
+```
+% python trigger-collect.py sample-inputs/input.txt
+Parsing input file... Done.
+Populating trigger times...
+...from file: sample-inputs/224.txt
+...from file: sample-inputs/225.txt
+...from file: sample-inputs/226.txt
+...from file: sample-inputs/227.txt
+...from file: sample-inputs/228.txt
+...from file: sample-inputs/229.txt
+...from file: sample-inputs/230.txt
+...from file: sample-inputs/231.txt
+Done
+Getting trigger times now...
+Getting times for trigger: 12
+Written to file: ./outputs/12-out.txt
+Getting times for trigger: 23
+Written to file: ./outputs/23-out.txt
+Done getting trigger times.
+Ordering triggers now... Done.
+```
+
+In this example the contents of `input.txt` are:
+
+```
+Files: sample-inputs/224.txt sample-inputs/225.txt sample-inputs/226.txt sample-inputs/227.txt sample-inputs/228.txt sample-inputs/229.txt sample-inputs/230.txt sample-inputs/231.txt
+Triggers: 12 23
+```
+
+These input files are included in the download in the `sample-inputs` folder.
+
+#### Return Codes
+
+* 0 - Success (or presumed success)
+* 1 - File IO error
+* 2 - Improperly formatted input file
+* 3 - Too many trigger channels error
+* 4 - Trigger decimal integer overflow
+* 5 - Not enough triggers error
 
 ## Revision History
 
 * 8-2-2014: Initial commit
+* 12-2-2014: v.2.0, which takes only one input file and can do multiple triggers at once.
